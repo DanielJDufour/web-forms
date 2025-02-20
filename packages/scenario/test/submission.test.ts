@@ -1,4 +1,9 @@
 import {
+	OPENROSA_XFORMS_NAMESPACE_URI,
+	OPENROSA_XFORMS_PREFIX,
+	XFORMS_NAMESPACE_URI,
+} from '@getodk/common/constants/xmlns.ts';
+import {
 	bind,
 	body,
 	group,
@@ -17,7 +22,7 @@ import {
 import { TagXFormsElement } from '@getodk/common/test/fixtures/xform-dsl/TagXFormsElement.ts';
 import type { XFormsElement } from '@getodk/common/test/fixtures/xform-dsl/XFormsElement.ts';
 import { createUniqueId } from 'solid-js';
-import { beforeEach, describe, expect, it } from 'vitest';
+import { assert, beforeEach, describe, expect, it } from 'vitest';
 import { Scenario } from '../src/jr/Scenario.ts';
 import { ANSWER_OK, ANSWER_REQUIRED_BUT_EMPTY } from '../src/jr/validation/ValidateOutcome.ts';
 import { ReactiveScenario } from '../src/reactive/ReactiveScenario.ts';
@@ -141,7 +146,7 @@ describe('Form submission', () => {
 
 			expect(scenario).toHaveSerializedSubmissionXML(
 				// prettier-ignore
-				t('data',
+				t(`data id="xml-serialization-basic-default-values"`,
 					t('grp',
 						t('inp', defaults.inp ?? ''),
 						t('sel1', defaults.sel1 ?? ''),
@@ -154,6 +159,116 @@ describe('Form submission', () => {
 					t('meta',
 						t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
 			);
+		});
+
+		describe('instance root attributes', () => {
+			it('serializes attributes from the instance root, as they appear in the form definition', async () => {
+				const formId = 'inst-root-attrs';
+				const version = '2018061801';
+
+				const scenario = await Scenario.init(
+					'XML serialization - instance root attrs',
+					// prettier-ignore
+					html(
+						head(
+							title('XML serialization - instance root attrs'),
+							model(
+								mainInstance(
+									t(`data id="${formId}" version="${version}"`,
+										t('inp', 'val'),
+										t('meta',
+											t('instanceID')))
+								),
+								bind('/data/inp').type('string'),
+								bind('/data/meta/instanceID').calculate(`'${DEFAULT_INSTANCE_ID}'`)
+							)
+						),
+						body(
+							input('/data/inp', label('Input (with default value)'))
+						)
+					)
+				);
+
+				expect(scenario).toHaveSerializedSubmissionXML(
+					// prettier-ignore
+					t(`data id="${formId}" version="${version}"`,
+						t('inp', 'val'),
+						t('meta',
+							t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
+				);
+			});
+
+			it('preserves instance root attribute namespace prefixes, as they appear in the form definition', async () => {
+				const formId = 'inst-root-attrs';
+				const version = '2018061801';
+
+				const scenario = await Scenario.init(
+					'XML serialization - instance root attrs',
+					// prettier-ignore
+					html(
+						head(
+							title('XML serialization - instance root attrs'),
+							model(
+								mainInstance(
+									t(`data id="${formId}" orx:version="${version}"`,
+										t('inp', 'val'),
+										t('meta',
+											t('instanceID')))
+								),
+								bind('/data/inp').type('string'),
+								bind('/data/meta/instanceID').calculate(`'${DEFAULT_INSTANCE_ID}'`)
+							)
+						),
+						body(
+							input('/data/inp', label('Input (with default value)'))
+						)
+					)
+				);
+
+				expect(scenario).toHaveSerializedSubmissionXML(
+					// prettier-ignore
+					t(`data xmlns:orx="${OPENROSA_XFORMS_NAMESPACE_URI}" id="${formId}" orx:version="${version}"`,
+						t('inp', 'val'),
+						t('meta',
+							t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
+				);
+			});
+
+			it('preserves escaped values of instance root attributes', async () => {
+				const formId = 'inst-root-attrs';
+				const version = '2018061801&gt;&quot;XML&quot;&amp;special&lt;chars';
+
+				const scenario = await Scenario.init(
+					'XML serialization - instance root attrs',
+					// prettier-ignore
+					html(
+						head(
+							title('XML serialization - instance root attrs'),
+							model(
+								mainInstance(
+									t(`data id="${formId}" orx:version="${version}"`,
+										t('inp', 'val'),
+										t('meta',
+											t('instanceID')))
+								),
+								bind('/data/inp').type('string'),
+								bind('/data/meta/instanceID').calculate(`'${DEFAULT_INSTANCE_ID}'`)
+							)
+						),
+						body(
+							input('/data/inp', label('Input (with default value)'))
+						)
+					)
+				);
+
+				expect(scenario).toHaveSerializedSubmissionXML(
+					// prettier-ignore
+					t(`data xmlns:orx="${OPENROSA_XFORMS_NAMESPACE_URI}" id="${formId}" orx:version="${version}"`,
+						t('inp', 'val'),
+						t('meta',
+							t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
+				);
+			});
 		});
 
 		// The original ported JavaRosa test exercising Unicode support was a good
@@ -202,7 +317,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="unicode-normalization"`,
 						t('rep',
 							t('inp', composed)),
 						t('meta',
@@ -217,7 +332,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="unicode-normalization"`,
 						t('rep',
 							t('inp', composed)),
 						t('meta',
@@ -255,7 +370,7 @@ describe('Form submission', () => {
 			it('does not serialize an element for a repeat range', () => {
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="xml-serialization-repeats"`,
 						t('meta',
 							t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
 				);
@@ -269,7 +384,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="xml-serialization-repeats"`,
 						t('rep',
 							t('inp', 'a')),
 						t('rep',
@@ -282,7 +397,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="xml-serialization-repeats"`,
 						t('rep',
 							t('inp', 'b')),
 						t('meta',
@@ -333,7 +448,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="xml-serialization-relevance"`,
 						t('grp-rel', '1'),
 						t('inp-rel', '0'),
 						t('grp'),
@@ -347,7 +462,7 @@ describe('Form submission', () => {
 
 				expect(scenario).toHaveSerializedSubmissionXML(
 					// prettier-ignore
-					t('data',
+					t(`data id="xml-serialization-relevance"`,
 						t('grp-rel', '0'),
 						t('inp-rel', '1'),
 						t('meta',
@@ -365,10 +480,10 @@ describe('Form submission', () => {
 					// prettier-ignore
 					html(
 						head(
-							title('Relevance XML serialization'),
+							title('Reactive XML serialization'),
 							model(
 								mainInstance(
-									t('data id="relevance-xml-serialization"',
+									t('data id="reactive-xml-serialization"',
 										t('rep-inp-rel'),
 										t('rep',
 											t('inp')),
@@ -400,7 +515,7 @@ describe('Form submission', () => {
 				// Default serialization before any state change
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp')),
@@ -415,7 +530,7 @@ describe('Form submission', () => {
 					// After first value change
 					expect(serialized).toBe(
 						// prettier-ignore
-						t('data',
+						t(`data id="reactive-xml-serialization"`,
 							t('rep-inp-rel'),
 							t('rep',
 								t('inp', `${i}`)),
@@ -435,7 +550,7 @@ describe('Form submission', () => {
 				// Default serialization before any state change
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp')),
@@ -448,7 +563,7 @@ describe('Form submission', () => {
 				// First repeat instance added
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp')),
@@ -463,7 +578,7 @@ describe('Form submission', () => {
 				// Second repeat instance added
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp')),
@@ -482,7 +597,7 @@ describe('Form submission', () => {
 				// Each of the above values set
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp', 'rep 1 inp')),
@@ -499,7 +614,7 @@ describe('Form submission', () => {
 				// Last repeat instance removed
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp', 'rep 1 inp')),
@@ -514,7 +629,7 @@ describe('Form submission', () => {
 				// First repeat instance removed
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp', 'rep 2 inp')),
@@ -527,7 +642,7 @@ describe('Form submission', () => {
 				// All repeat instances removed
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('meta',
 							t('instanceID', DEFAULT_INSTANCE_ID))).asXml()
@@ -550,7 +665,7 @@ describe('Form submission', () => {
 				// Current serialization before any relevance change
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel'),
 						t('rep',
 							t('inp', 'rep 1 inp')),
@@ -567,7 +682,7 @@ describe('Form submission', () => {
 				// Non-relevant /data/rep[position() != '1']/inp omitted
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel', '1'),
 						t('rep',
 							t('inp', 'rep 1 inp')),
@@ -582,7 +697,7 @@ describe('Form submission', () => {
 				// Non-relevant /data/rep[position() != '3']/inp omitted
 				expect(serialized).toBe(
 					// prettier-ignore
-					t('data',
+					t(`data id="reactive-xml-serialization"`,
 						t('rep-inp-rel', '3'),
 						t('rep'),
 						t('rep'),
@@ -732,7 +847,7 @@ describe('Form submission', () => {
 					expect(scenario.getValidationOutcome().outcome).toBe(ANSWER_OK);
 
 					// prettier-ignore
-					validSubmissionXML = t('data',
+					validSubmissionXML = t(`data id="prepare-for-submission"`,
 						t('rep',
 							t('inp', 'rep 1 inp')),
 						t('rep',
@@ -769,7 +884,7 @@ describe('Form submission', () => {
 					expect(scenario.getValidationOutcome().outcome).toBe(ANSWER_REQUIRED_BUT_EMPTY);
 
 					// prettier-ignore
-					invalidSubmissionXML = t('data',
+					invalidSubmissionXML = t(`data id="prepare-for-submission"`,
 						t('rep',
 							t('inp', 'rep 1 inp')),
 						t('rep',
@@ -794,5 +909,246 @@ describe('Form submission', () => {
 		});
 
 		describe.todo('for multiple requests, chunked by maximum size');
+	});
+
+	describe('submission-specific metadata', () => {
+		type MetadataElementName = 'instanceID';
+
+		type MetaNamespaceURI = OPENROSA_XFORMS_NAMESPACE_URI | XFORMS_NAMESPACE_URI;
+
+		type MetadataValueAssertion = (value: string | null) => unknown;
+
+		const getMetaChildElement = (
+			parent: ParentNode | null,
+			namespaceURI: MetaNamespaceURI,
+			localName: string
+		): Element | null => {
+			if (parent == null) {
+				return null;
+			}
+
+			for (const child of parent.children) {
+				if (child.namespaceURI === namespaceURI && child.localName === localName) {
+					return child;
+				}
+			}
+
+			return null;
+		};
+
+		/**
+		 * Normally this might be implemented as a
+		 * {@link https://vitest.dev/guide/extending-matchers | custom "matcher" (assertion)}.
+		 * But it's so specific to this sub-suite that it would be silly to sprawl
+		 * it out into other parts of the codebase!
+		 */
+		const assertMetadata = (
+			scenario: Scenario,
+			metaNamespaceURI: MetaNamespaceURI,
+			name: MetadataElementName,
+			assertion: MetadataValueAssertion
+		): void => {
+			const serializedInstanceBody = scenario.proposed_serializeInstance();
+			/**
+			 * Important: we intentionally omit the default namespace when serializing instance XML. We need to restore it here to reliably traverse nodes when {@link metaNamespaceURI} is {@link XFORMS_NAMESPACE_URI}.
+			 */
+			const instanceXML = `<instance xmlns="${XFORMS_NAMESPACE_URI}">${serializedInstanceBody}</instance>`;
+
+			const parser = new DOMParser();
+			const instanceDocument = parser.parseFromString(instanceXML, 'text/xml');
+			const instanceElement = instanceDocument.documentElement;
+			const instanceRoot = instanceElement.firstElementChild;
+
+			assert(
+				instanceRoot != null,
+				`Failed to find instance root element.\n\nActual serialized XML: ${serializedInstanceBody}\n\nActual instance DOM state: ${instanceElement.outerHTML}`
+			);
+
+			const meta = getMetaChildElement(instanceRoot, metaNamespaceURI, 'meta');
+			const targetElement = getMetaChildElement(meta, metaNamespaceURI, name);
+			const value = targetElement?.textContent ?? null;
+
+			assertion(value);
+		};
+
+		const PRELOAD_UID_PATTERN =
+			/^uuid:[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/;
+
+		const assertPreloadUIDValue = (value: string | null) => {
+			assert(value != null, 'Expected preload uid value to be serialized');
+			expect(value, 'Expected preload uid value to match pattern').toMatch(PRELOAD_UID_PATTERN);
+		};
+
+		describe('instanceID', () => {
+			describe('preload="uid"', () => {
+				let scenario: Scenario;
+
+				beforeEach(async () => {
+					// prettier-ignore
+					scenario = await Scenario.init('Meta instanceID preload uid', html(
+						head(
+							title('Meta instanceID preload uid'),
+							model(
+								mainInstance(
+									t('data id="meta-instanceid-preload-uid"',
+										t('inp', 'inp default value'),
+										/** @see note on `namespaces` sub-suite! */
+										t('meta',
+											t('instanceID')))
+								),
+								bind('/data/inp').type('string'),
+								bind('/data/meta/instanceID').preload('uid')
+							)
+						),
+						body(
+							input('/data/inp',
+								label('inp')))
+					));
+				});
+
+				/**
+				 * @see {@link https://getodk.github.io/xforms-spec/#preload-attributes:~:text=concatenation%20of%20%E2%80%98uuid%3A%E2%80%99%20and%20uuid()}
+				 */
+				it('is populated with a concatenation of ‘uuid:’ and uuid()', () => {
+					assertMetadata(
+						scenario,
+						/** @see note on `namespaces` sub-suite! */
+						XFORMS_NAMESPACE_URI,
+						'instanceID',
+						assertPreloadUIDValue
+					);
+				});
+
+				it('does not change after an input value is changed', () => {
+					scenario.answer('/data/inp', 'any non-default value!');
+
+					assertMetadata(
+						scenario,
+						/** @see note on `namespaces` sub-suite! */
+						XFORMS_NAMESPACE_URI,
+						'instanceID',
+						assertPreloadUIDValue
+					);
+				});
+			});
+
+			/**
+			 * NOTE: Do not read too much intent into this sub-suite coming after
+			 * tests above with `meta` and `instanceID` in the default (XForms)
+			 * namespace! Those tests were added first because they'll require the
+			 * least work to make pass. The `orx` namespace _is preferred_, {@link
+			 * https://getodk.github.io/xforms-spec/#metadata | per spec}.
+			 *
+			 * This fact is further emphasized by the next sub-suite, exercising
+			 * default behavior when a `meta` subtree node (of either namespace) is
+			 * not present.
+			 */
+			describe('namespaces', () => {
+				it(`preserves the ${OPENROSA_XFORMS_PREFIX} (${OPENROSA_XFORMS_NAMESPACE_URI}) namespace when used in the form definition`, async () => {
+					// prettier-ignore
+					const scenario = await Scenario.init(
+						'ORX Meta ORX instanceID preload uid',
+						html(
+							head(
+								title('ORX Meta ORX instanceID preload uid'),
+								model(
+									mainInstance(
+										t('data id="orx-meta-instanceid-preload-uid"',
+											t('inp', 'inp default value'),
+											t('orx:meta',
+												t('orx:instanceID'))
+										)
+									),
+									bind('/data/inp').type('string'),
+									bind('/data/orx:meta/orx:instanceID').preload('uid')
+								)
+							),
+							body(
+								input('/data/inp',
+									label('inp')))
+					));
+
+					assertMetadata(
+						scenario,
+						OPENROSA_XFORMS_NAMESPACE_URI,
+						'instanceID',
+						assertPreloadUIDValue
+					);
+				});
+
+				// This is redundant to other tests already exercising unprefixed names!
+				it.skip('preserves the default/un-prefixed namespace when used in the form definition');
+			});
+
+			describe('defaults when absent in form definition', () => {
+				interface MissingInstanceIDLeafNodeCase {
+					readonly metaNamespaceURI: MetaNamespaceURI;
+				}
+
+				describe.each<MissingInstanceIDLeafNodeCase>([
+					{ metaNamespaceURI: OPENROSA_XFORMS_NAMESPACE_URI },
+					{ metaNamespaceURI: XFORMS_NAMESPACE_URI },
+				])('meta namespace URI: $metaNamespaceURI', ({ metaNamespaceURI }) => {
+					const expectedNamePrefix =
+						metaNamespaceURI === OPENROSA_XFORMS_NAMESPACE_URI ? 'orx:' : '';
+					const metaSubtreeName = `${expectedNamePrefix}meta`;
+					const instanceIDName = `${expectedNamePrefix}instanceID`;
+
+					it(`injects and populates a missing ${instanceIDName} leaf node in an existing ${metaSubtreeName} subtree`, async () => {
+						// prettier-ignore
+						const scenario = await Scenario.init(
+							'ORX Meta ORX instanceID preload uid',
+							html(
+								head(
+									title('ORX Meta ORX instanceID preload uid'),
+									model(
+										mainInstance(
+											t('data id="orx-meta-instanceid-preload-uid"',
+												t('inp', 'inp default value'),
+												t(metaSubtreeName)
+											)
+										),
+										bind('/data/inp').type('string')
+									)
+								),
+								body(
+									input('/data/inp',
+										label('inp')))
+						));
+
+						assertMetadata(scenario, metaNamespaceURI, 'instanceID', assertPreloadUIDValue);
+					});
+				});
+
+				it('injects and populates an orx:meta subtree AND orx:instanceID leaf node', async () => {
+					// prettier-ignore
+					const scenario = await Scenario.init(
+						'ORX Meta ORX instanceID preload uid',
+						html(
+							head(
+								title('ORX Meta ORX instanceID preload uid'),
+								model(
+									mainInstance(
+										t('data id="orx-meta-instanceid-preload-uid"',
+											t('inp', 'inp default value')
+										)
+									),
+									bind('/data/inp').type('string')
+								)
+							),
+							body(
+								input('/data/inp',
+									label('inp')))
+					));
+
+					assertMetadata(
+						scenario,
+						OPENROSA_XFORMS_NAMESPACE_URI,
+						'instanceID',
+						assertPreloadUIDValue
+					);
+				});
+			});
+		});
 	});
 });

@@ -8,23 +8,22 @@ import type { RepeatInstanceNode } from './repeat/RepeatInstanceNode.ts';
 import type { RepeatRangeControlledNode } from './repeat/RepeatRangeControlledNode.ts';
 import type { RepeatRangeUncontrolledNode } from './repeat/RepeatRangeUncontrolledNode.ts';
 import type { RootNode } from './RootNode.ts';
-import type { AnySelectNode } from './SelectNode.ts';
+import type { SelectNode } from './SelectNode.ts';
 import type { SubtreeNode } from './SubtreeNode.ts';
 import type { TriggerNode } from './TriggerNode.ts';
-import type { RankNode } from './unsupported/RankNode.ts';
+import type { RankNode } from './RankNode.ts';
 import type { UploadNode } from './unsupported/UploadNode.ts';
 
 // prettier-ignore
-export type AnyUnsupportedControlNode =
-	| RankNode
-	| UploadNode;
+export type AnyUnsupportedControlNode = UploadNode;
 
 // prettier-ignore
 export type AnyControlNode =
 	| AnyInputNode
 	| AnyNoteNode
 	| AnyRangeNode
-	| AnySelectNode
+	| RankNode
+	| SelectNode
 	| TriggerNode;
 
 // prettier-ignore

@@ -1,25 +1,19 @@
 import type { XFormsElement } from '@getodk/common/test/fixtures/xform-dsl/XFormsElement.ts';
 import type {
 	AnyNode,
-	AnySelectNode,
 	OpaqueReactiveObjectFactory,
 	RepeatRangeControlledNode,
 	RepeatRangeNode,
 	RepeatRangeUncontrolledNode,
 	RootNode,
 	SelectNode,
-	SelectValues,
-	SubmissionChunkedType,
-	SubmissionOptions,
-	SubmissionResult,
-	ValueType,
 } from '@getodk/xforms-engine';
 import { constants as ENGINE_CONSTANTS } from '@getodk/xforms-engine';
 import type { Accessor, Setter } from 'solid-js';
 import { createMemo, createSignal, runWithOwner } from 'solid-js';
 import { afterEach, assert, expect } from 'vitest';
-import { SelectNodeAnswer } from '../answer/SelectNodeAnswer.ts';
 import { SelectValuesAnswer } from '../answer/SelectValuesAnswer.ts';
+import { RankValuesAnswer } from '../answer/RankValuesAnswer.ts';
 import type { ValueNodeAnswer } from '../answer/ValueNodeAnswer.ts';
 import { answerOf } from '../client/answerOf.ts';
 import type { InitializeTestFormOptions, TestFormResource } from '../client/init.ts';
@@ -117,15 +111,17 @@ type GetQuestionAtIndexParameters<
 	expectedType?: ExpectedQuestionType | null
 ];
 
-type AnswerSelectParameters = readonly [reference: string, ...selectionValues: string[]];
+type AnswerItemCollectionParameters = readonly [reference: string, ...selectionValues: string[]];
 
 // prettier-ignore
 type AnswerParameters =
-	| AnswerSelectParameters
+	| AnswerItemCollectionParameters
 	| readonly [reference: string, value: unknown]
 	| readonly [value: unknown];
 
-const isAnswerSelectParams = (args: AnswerParameters): args is AnswerSelectParameters => {
+const isAnswerItemCollectionParams = (
+	args: AnswerParameters
+): args is AnswerItemCollectionParameters => {
 	return args.length > 2 && args.every((arg) => typeof arg === 'string');
 };
 
@@ -383,38 +379,30 @@ export class Scenario {
 		return this.setNonTerminalEventPosition(() => index, reference);
 	}
 
-	private answerSelect(reference: string, ...selectionValues: string[]): ValueNodeAnswer {
+	private answerItemCollectionQuestion(
+		reference: string,
+		...selectionValues: string[]
+	): ValueNodeAnswer {
 		const event = this.setPositionalStateToReference(reference);
+		const isSelect = isQuestionEventOfType(event, 'select');
+		const isRank = isQuestionEventOfType(event, 'rank');
 
-		if (!isQuestionEventOfType(event, 'select')) {
+		if (!(isSelect || isRank)) {
 			throw new Error(
-				`Cannot set selection values for reference ${reference}: event is type ${event.eventType}, node is type ${event.node?.nodeType}`
+				`Cannot set values for reference ${reference}: event is type ${event.eventType}, node is type ${event.node?.nodeType}`
 			);
+		}
+
+		if (isRank) {
+			return event.answerQuestion(new RankValuesAnswer(selectionValues));
 		}
 
 		return event.answerQuestion(new SelectValuesAnswer(selectionValues));
 	}
 
-	proposed_answerTypedSelect<V extends ValueType>(
-		reference: string,
-		valueType: V,
-		values: SelectValues<V>
-	): SelectNodeAnswer<V> {
-		const node = this.getInstanceNode(reference);
-
-		assert(node.nodeType === 'select');
-		assert(node.valueType === valueType);
-
-		const selectNode = node as SelectNode<V>;
-
-		selectNode.selectValues(values);
-
-		return new SelectNodeAnswer(selectNode);
-	}
-
 	answer(...args: AnswerParameters): ValueNodeAnswer {
-		if (isAnswerSelectParams(args)) {
-			return this.answerSelect(...args);
+		if (isAnswerItemCollectionParams(args)) {
+			return this.answerItemCollectionQuestion(...args);
 		}
 
 		const [arg0, arg1, ...rest] = args;
@@ -900,7 +888,7 @@ export class Scenario {
 		return label;
 	}
 
-	private getCurrentSelectNode(options: AssertCurrentReferenceOptions): AnySelectNode {
+	private getCurrentSelectNode(options: AssertCurrentReferenceOptions): SelectNode {
 		const { assertCurrentReference } = options;
 		const event = this.getSelectedPositionalEvent();
 
@@ -986,10 +974,8 @@ export class Scenario {
 	 * more about Collect's responsibility for submission (beyond serialization,
 	 * already handled by {@link proposed_serializeInstance}).
 	 */
-	prepareWebFormsSubmission<ChunkedType extends SubmissionChunkedType>(
-		options?: SubmissionOptions<ChunkedType>
-	): Promise<SubmissionResult<ChunkedType>> {
-		return this.instanceRoot.prepareSubmission<ChunkedType>(options);
+	prepareWebFormsSubmission() {
+		return this.instanceRoot.prepareSubmission();
 	}
 
 	// TODO: consider adapting tests which use the following interfaces to use
