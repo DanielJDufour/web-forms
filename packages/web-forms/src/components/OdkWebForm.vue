@@ -20,6 +20,7 @@ const webFormsVersion = __WEB_FORMS_VERSION__;
 interface OdkWebFormsProps {
 	formXml: string;
 	fetchFormAttachment: FetchFormAttachment;
+	header: Boolean;
 	missingResourceBehavior?: MissingResourceBehavior;
 
 	/**
@@ -33,6 +34,7 @@ const props = defineProps<OdkWebFormsProps>();
 
 // eslint-disable-next-line @typescript-eslint/consistent-type-definitions -- evidently a type must be used for this to be assigned to a name (which we use!); as an interface, it won't satisfy the `Record` constraint of `defineEmits`.
 type OdkWebFormEmits = {
+	odkForm: [odkForm: any];
 	submit: [submissionPayload: MonolithicSubmissionResult];
 	submitChunked: [submissionPayload: ChunkedSubmissionResult];
 };
@@ -101,6 +103,14 @@ const emitSubmitChunked = async (root: RootNode) => {
 	}
 };
 
+const emitOdkForm = async(root: RootNode) => {
+	if (isEmitSubscribed('onOdkForm')) {
+		if (root) {
+			emit('odkForm', root);
+		}
+	}
+}
+
 const emit = defineEmits<OdkWebFormEmits>();
 
 const odkForm = ref<RootNode>();
@@ -116,6 +126,7 @@ initializeForm(props.formXml, {
 })
 	.then((f) => {
 		odkForm.value = f;
+		emitOdkForm(f);
 	})
 	.catch((cause) => {
 		initializeFormError.value = new FormInitializationError(cause);
@@ -191,7 +202,7 @@ watchEffect(() => {
 				{{ validationErrorMessage }}
 			</PrimeMessage>
 
-			<FormHeader :form="odkForm" />
+			<FormHeader :form="odkForm" v-if="header"/>
 
 			<Card class="questions-card">
 				<template #content>

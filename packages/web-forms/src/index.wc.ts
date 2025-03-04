@@ -9,3 +9,5 @@ const WebFormElement = defineCustomElement(OdkWebForm, {
 });
 
 customElements.define('odk-web-form', WebFormElement);
+
+export default WebFormElement;
